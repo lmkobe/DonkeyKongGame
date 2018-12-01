@@ -64,16 +64,16 @@ mensagem3 : string "Raca Caaso!!!"
 main:
 	
 	loadn r1, #tela2Linha00
-	loadn r2, #0
+	loadn r2, #2304
 	call ImprimeTela
 	
 	loadn r1, #tela3Linha00 
 	loadn r2, #3584
 	call ImprimeTela
 	
-	loadn R0, #964			
-	store posMario, R0		; Zera Posicao Atual da Nave
-	store posAntMario, R0	; Zera Posicao Anterior da Nave
+	loadn R0, #0			
+	store posMario, R0		; Zera Posicao Atual do Mario
+	store posAntMario, R0	; Zera Posicao Anterior do Mario
 	
 	;Loadn R0, #240
 	;store posAlien, R0		; Zera Posicao Atual do Alien
@@ -87,7 +87,7 @@ main:
 		loadn R1, #10
 		mod R1, R0, R1
 		cmp R1, R2		; if (mod(c/10)==0
-		ceq MoveMario	; Chama Rotina de movimentacao da Nave
+		ceq MoveMario	; Chama Rotina de movimentacao do Mario
 	
 		;loadn R1, #30
 		;mod R1, R0, R1
@@ -115,6 +115,8 @@ MoveMario:
 	load r1, posAntMario
 	cmp r0, r1
 	jeq MoveMario_Skip
+	
+	;Se Próxima instrucao do mario for o chao ou parede, nao move
 		call MoveMario_Apaga
 		call MoveMario_Desenha		;}
   MoveMario_Skip:
@@ -161,6 +163,9 @@ MoveMario_RecalculaPos:		; Recalcula posicao da Mario em funcao das Teclas press
 	push R1
 	push R2
 	push R3
+	push R4
+	push R5
+	push R6
 
 	load R0, posMario
 	
@@ -187,6 +192,9 @@ MoveMario_RecalculaPos:		; Recalcula posicao da Mario em funcao das Teclas press
 	
   MoveMario_RecalculaPos_Fim:	; Se nao for nenhuma tecla valida, vai embora
 	store posMario, R0
+	pop R6
+	pop R5
+	pop R4
 	pop R3
 	pop R2
 	pop R1
@@ -219,18 +227,23 @@ MoveMario_RecalculaPos:		; Recalcula posicao da Mario em funcao das Teclas press
 	jmp MoveMario_RecalculaPos_Fim
 
   MoveMario_RecalculaPos_S:	; Move Mario para Baixo
-	loadn R1, #1159
-	cmp R0, R1		; Testa condicoes de Contorno 
-	jgr MoveMario_RecalculaPos_Fim
-	loadn R2, #tela3Linha00
-	loadn R3, #40
-	loadn R4, #'#'
-	add R2, R2, R0
-	add R2, R2, R3
-	cmp R2, R4
+	loadn R1, #0
+	loadn R3, #tela3Linha00
+	loadn R4, #0
+	loadn R2, #40
+	
+	;cmp R0, R1		; Testa condicoes de Contorno 
+	;jgr MoveMario_RecalculaPos_Fim
+	;----Testa colisão com o chão--------
+	loadn R5, #3619
+	add R4, R0, R2 
+	div R1, R4, R2  ;R1 = posMario / 40
+	add R3, R3, R1  ;R3 = R3 + R1
+	add R3, R3, R4  ;R3 = R3 + 41
+	loadi R6, R3
+	cmp R5, R6		;if ('#' == R6)
 	jeq MoveMario_RecalculaPos_Fim
-	loadn R1, #40
-	add R0, R0, R1	; pos = pos + 40
+	add R0, R0, R2	; pos = pos + 40
 	jmp MoveMario_RecalculaPos_Fim	
 	
 MoveMario_Desenha:	; Desenha caractere do mario
@@ -240,21 +253,13 @@ MoveMario_Desenha:	; Desenha caractere do mario
 	Loadn R1, #'X'	; Mario
 	load R0, posMario
 	outchar R1, R0
-	store posAntMario, R0	; Atualiza Posicao Anterior da Nave = Posicao Atual
+	store posAntMario, R0	; Atualiza Posicao Anterior da Mario = Posicao Atual
 	
 	pop R1
 	pop R0
 	rts
 
-;QuedaMario:
-;	MoveMario_RecalculaPos_W
-;	loadn R1, #tela3Linha00
-;	loadn R2, #40
-;	loadn R3, #' '
-;	add R1, R1, R0
-;	add R1, R1, R2
-;	cmp R1, R3
-;	jeq QuedaMario
+	
 	
 ImprimeTela: 	;  Rotina de Impresao de Cenario na Tela Inteira
 		;  r1 = endereco onde comeca a primeira linha do Cenario
@@ -308,11 +313,11 @@ ImprimeStr2:	;  Rotina de Impresao de Mensagens:    r0 = Posicao da tela que o p
 	
 	loadn r3, #'\0'	; Criterio de parada
 	loadn r5, #' '	; Espaco em Branco
-	ImprimeStr2_Loop:	
+	ImprimeStr2_Loop:
 		loadi r4, r1
 		cmp r4, r3		; If (Char == \0)  vai Embora
 		jeq ImprimeStr2_Sai
-		cmp r4, r5		; If (Char == ' ')  vai Pula outchar do espaco para nao apagar outros caracteres
+		cmp r4, r5		; If (Char == ' ')  vai Pula outchar do espaco para na apagar outros caracteres
 		jeq ImprimeStr2_Skip
 		add r4, r2, r4	; Soma a Cor
 		outchar r4, r0	; Imprime o caractere na tela
@@ -368,32 +373,32 @@ tela0Linha28 : string "                                        "
 tela0Linha29 : string "                                        "
 
 
-;------Escadas------------
+;------It's me Mario------------
 tela2Linha00 : string "                                        "
 tela2Linha01 : string "                                        "
 tela2Linha02 : string "                                        "
-tela2Linha03 : string "        H                   H           "
-tela2Linha04 : string "        H                   H           "
-tela2Linha05 : string "        H                   H           "
-tela2Linha06 : string "        H                   H           "
-tela2Linha07 : string "        H                   H           "
-tela2Linha08 : string "        H                   H           "
-tela2Linha09 : string "      H                        H        "
-tela2Linha10 : string "      H                        H        "
-tela2Linha11 : string "      H                        H        "
-tela2Linha12 : string "      H          H             H        "
-tela2Linha13 : string "      H          H             H        "
-tela2Linha14 : string "      H          H             H        "
-tela2Linha15 : string "      H          H             H        "
-tela2Linha16 : string "      H          H             H        "
-tela2Linha17 : string "      H          H             H        "
-tela2Linha18 : string "        H                 H             "
-tela2Linha19 : string "        H                 H             "
-tela2Linha20 : string "        H                 H             "
-tela2Linha21 : string "        H                 H             "
-tela2Linha22 : string "        H                 H             "
-tela2Linha23 : string "        H                 H             "
-tela2Linha24 : string "        H                 H             "
+tela2Linha03 : string "                                        "
+tela2Linha04 : string "                                        "
+tela2Linha05 : string "                                        "
+tela2Linha06 : string "                                        "
+tela2Linha07 : string "                                        "
+tela2Linha08 : string "                                        "
+tela2Linha09 : string "                                        "
+tela2Linha10 : string "                                        "
+tela2Linha11 : string "                                        "
+tela2Linha12 : string "                                        "
+tela2Linha13 : string "                                        "
+tela2Linha14 : string "                                        "
+tela2Linha15 : string "                                        "
+tela2Linha16 : string "                                        "
+tela2Linha17 : string "                                        "
+tela2Linha18 : string "                                        "
+tela2Linha19 : string "                                        "
+tela2Linha20 : string "                                        "
+tela2Linha21 : string "                                        "
+telaH2Linha22 : string "                                        "
+tela2Linha23 : string "                                        "
+tela2Linha24 : string "                                        "
 tela2Linha25 : string "                                        "
 tela2Linha26 : string "                                        "
 tela2Linha27 : string "                                        "
@@ -402,24 +407,24 @@ tela2Linha29 : string "                                        "
 
 ;------Plataforma1---------
 tela3Linha00 : string "                                        "
-tela3Linha01 : string "                 @@                     "
-tela3Linha02 : string "                 @@  %%%                "
-tela3Linha03 : string "    #### ################### ########   "
+tela3Linha01 : string "###                                     "
+tela3Linha02 : string "                                        "
+tela3Linha03 : string "                                        "
 tela3Linha04 : string "                                        "
 tela3Linha05 : string "                                        "
 tela3Linha06 : string "                                        "
 tela3Linha07 : string "                                        "
 tela3Linha08 : string "                                        "
-tela3Linha09 : string "    ## ####             ####### #####   "
+tela3Linha09 : string "                                        "
 tela3Linha10 : string "                                        "
 tela3Linha11 : string "                                        "
-tela3Linha12 : string "              ### ###                   "
+tela3Linha12 : string "                                        "
 tela3Linha13 : string "                                        "
 tela3Linha14 : string "                                        "
 tela3Linha15 : string "                                        "
 tela3Linha16 : string "                                        "
 tela3Linha17 : string "                                        "
-tela3Linha18 : string "     ### ################# #######      "
+tela3Linha18 : string "                                        "
 tela3Linha19 : string "                                        "
 tela3Linha20 : string "                                        "
 tela3Linha21 : string "                                        "
