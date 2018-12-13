@@ -118,7 +118,9 @@ MoveMario:
 	
 	;Se Próxima instrucao do mario for o chao ou parede, nao move
 		call MoveMario_Apaga
+		call MoveMario_Apaga2
 		call MoveMario_Desenha		;}
+		call MoveMario_Desenha2
   MoveMario_Skip:
 	
 	pop r1
@@ -157,6 +159,38 @@ MoveMario_Apaga:		; Apaga o Mario preservando o Cenario!
 	pop R0
 	rts
 ;----------------------------------	
+	
+MoveMario_Apaga2:		; Apaga o Mario preservando o Cenario!
+	push R0
+	push R1
+	push R2
+	push R3
+	push R4
+	push R5
+
+	load R0, posAntMario	; R0 = posAnt
+	loadn R4, #40
+	sub R0, R0, R4
+	
+	; --> R2 = Tela1Linha0 + posAnt + posAnt/40  ; tem que somar posAnt/40 no ponteiro pois as linas da string terminam com /0 !!
+
+	loadn R1, #tela3Linha00	; Endereco onde comeca a primeira linha do cenario!!
+	add R2, R1, r0	; R2 = Tela1Linha0 + posAnt
+	div R3, R0, R4	; R3 = posAnt/40
+	add R2, R2, R3	; R2 = Tela1Linha0 + posAnt + posAnt/40
+	
+	loadi R5, R2	; R5 = Char (Tela(posAnt))
+	
+	outchar R5, R0	; Apaga o Obj na tela com o Char correspondente na memoria do cenario
+	
+	pop R5
+	pop R4
+	pop R3
+	pop R2
+	pop R1
+	pop R0
+	rts
+;----------------------------------		
 	
 MoveMario_RecalculaPos:		; Recalcula posicao da Mario em funcao das Teclas pressionadas
 	push R0
@@ -286,12 +320,31 @@ MoveMario_RecalculaPos:		; Recalcula posicao da Mario em funcao das Teclas press
 MoveMario_Desenha:	; Desenha caractere do mario
 	push R0
 	push R1
-	
-	Loadn R1, #'X'	; Mario
+	;Loadn R1, #00000000	; Mario
 	load R0, posMario
-	outchar R1, R0
+	loadn R3, #3072
+	outchar R3, R0
 	store posAntMario, R0	; Atualiza Posicao Anterior da Mario = Posicao Atual
 	
+	pop R1
+	pop R0
+	rts
+	
+MoveMario_Desenha2:	; Desenha caractere do mario
+	push R0
+	push R1
+	push R2
+	push R3
+	loadn R1, #40	; Mario
+	loadn R2, #0
+	load R0, posMario
+	sub R2, R0, R1
+	loadn R3, #2305
+	outchar R3, R2
+	store posAntMario, R0	; Atualiza Posicao Anterior da Mario = Posicao Atual
+	
+	pop R3
+	pop R2
 	pop R1
 	pop R0
 	rts
@@ -301,9 +354,6 @@ Queda_Mario:
 	loadn R3, #tela3Linha00
 	loadn R4, #0
 	loadn R2, #40
-	
-	;cmp R0, R1		; Testa condicoes de Contorno 
-	;jgr MoveMario_RecalculaPos_Fim
 	;----Testa colisão com o chão--------
 	loadn R5, #3619
 	add R4, R0, R2 
@@ -311,11 +361,29 @@ Queda_Mario:
 	add R3, R3, R1  ;R3 = R3 + R1
 	add R3, R3, R4  ;R3 = R3 + 41
 	loadi R6, R3
-	cmp R5, R6		;if ('#' == R6)
+	cmp R5, R6		;if ('#' == R6) para de cair
 	jeq MoveMario_RecalculaPos_Fim
 	loadn R1, #40
 	add R0, R0, R1
+	store posMario, R0
+	call Delay
+	call MoveMario_Apaga
+	call MoveMario_Apaga2
+	call MoveMario_Desenha
+	call MoveMario_Desenha2
 	jmp Queda_Mario
+	
+;Delay para a animacao de queda do mario quando passa da plataforma	
+Delay:	
+	loadn R1, #500
+	loopj:
+		loadn R2, #500
+	loopi:
+		dec R2
+		jnz loopi
+		dec R1
+		jnz loopj
+	rts
 	
 ImprimeTela: 	;  Rotina de Impresao de Cenario na Tela Inteira
 		;  r1 = endereco onde comeca a primeira linha do Cenario
