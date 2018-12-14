@@ -25,38 +25,23 @@
 
 jmp main
 
-
-mensagem : var #21 ; aloca na memoria variavel com 21 bytes
-static mensagem + #0, #'A' ;preenche a variavel alocada
-static mensagem + #1, #'A'
-static mensagem + #2, #'A'
-static mensagem + #3, #'a'
-static mensagem + #4, #'B'
-static mensagem + #5, #'C'
-static mensagem + #6, #'E'
-static mensagem + #7, #'N'
-static mensagem + #8, #'T'
-static mensagem + #9, #'E'
-static mensagem + #10, #'R'
-static mensagem + #11, #' '
-static mensagem + #12, #'T'
-static mensagem + #13, #'O'
-static mensagem + #14, #' '
-static mensagem + #15, #'S'
-static mensagem + #16, #'T'
-static mensagem + #17, #'A'
-static mensagem + #18, #'R'
-static mensagem + #19, #'T'
-static mensagem + #20, #'\0'
-
 posMario: var #1
 posAntMario: var #1
+posDK: var #1
+posAntDK: var #1
+posBarril: var #1
+posAntBarril: var #1
+FlagBarril: var #1
+countBarril: var #1
+countBarril2: var #1
+flagDK: var #1
 
 
 mensagem2 : string "Xupa Federal!!!"
 mensagem3 : string "Raca Caaso!!!"
 
-
+Msn0: string "V O C E   P E R D E U !!!"
+Msn1: string "Quer jogar novamente? <s/n>"
 
 
 ;---- Inicio do Programa Principal -----
@@ -72,12 +57,22 @@ main:
 	call ImprimeTela
 	
 	loadn R0, #962			
-	store posMario, R0		; Zera Posicao Atual do Mario
-	store posAntMario, R0	; Zera Posicao Anterior do Mario
+	store posMario, R0		; Posicao Atual do Mario
+	store posAntMario, R0	; Posicao Anterior do Mario
 	
-	;Loadn R0, #240
-	;store posAlien, R0		; Zera Posicao Atual do Alien
-	;store posAntAlien, R0	; Zera Posicao Anterior do Alien
+	loadn R0, #98
+	store posDK, R0
+	store posAntDK, R0
+	
+	store posBarril, R0
+	store posAntBarril, R0
+	loadn R0, #1
+	store FlagBarril, R0
+	store flagDK, R0
+	loadn R0, #1
+	store countBarril, R0
+	loadn R0, #2500
+	store countBarril2, R0
 	
 	loadn R0, #0			; Contador para os Mods	= 0
 	loadn R2, #0			; Para verificar se (mod(c/10)==0
@@ -89,13 +84,45 @@ main:
 		cmp R1, R2		; if (mod(c/10)==0
 		ceq MoveMario	; Chama Rotina de movimentacao do Mario
 	
+		;----------Contador para que o DK jogue o barril periodicamente--------
+		load R4, countBarril
+		load R3, countBarril2 
+		dec R3
+		jnz Count_fim
+		loadn R3, #2500
+		dec R4
+		jnz Count_fim
+		
+		loadn R4, #1
+		loadn R5, #1
+		store FlagBarril, R5
+		load R6, posDK
+		store posBarril, R6
+		store posAntBarril, R6
+		
+		Count_fim:
+			store countBarril, R4
+			store countBarril2, R3
+	
+	
+		loadn R1, #40
+		mod R1, R0, R1
+		cmp R1, R2		; if (mod(c/40)==0
+		ceq MoveBarril	; Chama Rotina de movimentacao do barril
+	
+		loadn R1, #30
+		mod R1, R0, R1
+		cmp R1, R2		; if (mod(c/10)==0
+		ceq MoveDK	; Chama Rotina de movimentacao do Donkey Kong
+		
+		
 		;loadn R1, #30
 		;mod R1, R0, R1
 		;cmp R1, R2		; if (mod(c/30)==0
 		;ceq MoveAlien	; Chama Rotina de movimentacao do Alien
 	
 		;call Delay
-		;inc R0 	;c++
+		inc R0 	;c++
 		jmp Loop
 	
 	
@@ -366,23 +393,356 @@ Queda_Mario:
 	loadn R1, #40
 	add R0, R0, R1
 	store posMario, R0
-	call Delay
+	;call Delay
 	call MoveMario_Apaga
 	call MoveMario_Apaga2
 	call MoveMario_Desenha
 	call MoveMario_Desenha2
 	jmp Queda_Mario
 	
+MoveDK:
+	push r0
+	push r1
+	
+	call MoveDK_RecalculaPos
+	
+; So' Apaga e Redezenha se (pos != posAnt)
+;	If (pos != posAnt)	{	
+	load r0, posDK
+	load r1, posAntDK
+	cmp r0, r1
+	jeq MoveDK_Skip
+		call MoveDK_Apaga
+		call MoveDK_Desenha		;}
+  MoveDK_Skip:
+	
+	pop r1
+	pop r0
+	rts
+		
+; ----------------------------
+
+MoveDK_Apaga:
+	push R0
+	push R1
+	push R2
+	push R3
+	push R4
+	push R5
+
+	load R0, posAntDK	; R0 == posAnt
+	load R1, posAntMario		; R1 = posAnt
+	cmp r0, r1
+	jne MoveDK_Apaga_Skip
+		loadn r5, #'X'		; Se o Tiro passa sobre a Nave, apaga com um X, senao apaga com o cenario 
+		jmp MoveDK_Apaga_Fim
+
+  MoveDK_Apaga_Skip:	
+  
+	; --> R2 = Tela1Linha0 + posAnt + posAnt/40  ; tem que somar posAnt/40 no ponteiro pois as linas da string terminam com /0 !!
+	loadn R1, #tela3Linha00	; Endereco onde comeca a primeira linha do cenario!!
+	add R2, R1, r0	; R2 = Tela1Linha0 + posAnt
+	loadn R4, #40
+	div R3, R0, R4	; R3 = posAnt/40
+	add R2, R2, R3	; R2 = Tela1Linha0 + posAnt + posAnt/40
+	
+	loadi R5, R2	; R5 = Char (Tela(posAnt))
+  
+  MoveDK_Apaga_Fim:	
+	outchar R5, R0	; Apaga o Obj na tela com o Char correspondente na memoria do cenario
+	
+	pop R5
+	pop R4
+	pop R3
+	pop R2
+	pop R1
+	pop R0
+	rts
+	
+MoveDK_RecalculaPos:
+	push R0
+	push R1
+	push R2
+	push R3
+	push R4
+	push R5
+	push R6
+
+	load R0, posDK
+	;---Se flagDK == 0, move para a esquerda, se flagDK == 1 move para a direita
+	load r1, flagDK
+	loadn r2, #0
+	cmp r1, r2
+	jeq MoveDK_RecalculaPos_Left 
+	
+	loadn r2, #1
+	cmp r1, r2
+	jeq MoveDK_RecalculaPos_Right
+	
+	MoveDK_RecalculaPos_Left:
+		dec R0	; pos = pos -1
+		
+		loadn R1, #0
+		loadn R3, #tela3Linha00
+		loadn R4, #0
+		loadn R2, #40
+		;----Testa se saiu do chao--------
+		loadn R5, #' '
+		add R4, R0, R2 
+		div R1, R4, R2  ;R1 = posMario / 40
+		add R3, R3, R1  ;R3 = R3 + R1
+		add R3, R3, R4  ;R3 = R3 + 41
+		loadi R6, R3
+		cmp R5, R6		;if (' ' == R6)
+		jeq MoveDK_RecalculaPos_FimLeft
+		jmp MoveDK_RecalculaPos_Fim
+	
+	MoveDK_RecalculaPos_Right:
+		inc r0
+		loadn R1, #0
+		loadn R3, #tela3Linha00
+		loadn R4, #0
+		loadn R2, #40
+		;----Testa se saiu do chao--------
+		loadn R5, #' '
+		add R4, R0, R2 
+		div R1, R4, R2  ;R1 = posMario / 40
+		add R3, R3, R1  ;R3 = R3 + R1
+		add R3, R3, R4  ;R3 = R3 + 41
+		loadi R6, R3
+		cmp R5, R6		;if (' ' == R6)
+		jeq MoveDK_RecalculaPos_FimRight
+		jmp MoveDK_RecalculaPos_Fim
+		
+	;---Caso a posicao do DK tenha saido do chao, entao a acao eh desfeita e na proxima movimentacao
+	;---o DK ira se mover na direcao oposta
+	MoveDK_RecalculaPos_FimLeft:
+		inc r0
+		loadn r1, #1
+		store flagDK, r1
+		jmp MoveDK_RecalculaPos_Fim
+	
+	MoveDK_RecalculaPos_FimRight:
+		dec r0
+		loadn r1, #0
+		store flagDK, r1
+	
+	MoveDK_RecalculaPos_Fim:	
+		store posDK, R0	; Grava a posicao alterada na memoria
+		pop R6
+		pop R5
+		pop R4
+		pop R3
+		pop R2
+		pop R1
+		pop R0
+		rts
+
+
+;----------------------------------
+MoveDK_Desenha:
+	push R0
+	push R1
+	
+	Loadn R1, #259	; DK
+	load R0, posDK
+	outchar R1, R0
+	store posAntDK, R0
+	
+	pop R1
+	pop R0
+	rts
+
+;----------------------------------
+;----------------------------------
+;----------------------
+	
+MoveBarril:
+	push r0
+	push r1
+	
+	call MoveBarril_RecalculaPos
+
+; So' Apaga e Redezenha se (pos != posAnt)
+;	If (pos != posAnt)	{	
+	load r0, posBarril
+	load r1, posAntBarril
+	cmp r0, r1
+	jeq MoveBarril_Skip
+		call MoveBarril_Apaga
+		call MoveBarril_Desenha		;}
+  MoveBarril_Skip:
+	
+	pop r1
+	pop r0
+	rts
+
+;-----------------------------
+
+MoveBarril_Apaga:
+	push R0
+	push R1
+	push R2
+	push R3
+	push R4
+	push R5
+
+	; Compara Se (posAntBarril == posAntNave)
+	load R0, posAntBarril	; R0 = posAnt
+	load R1, posAntMario	; R1 = posAnt
+	cmp r0, r1
+	jne MoveBarril_Apaga_Skip1
+		loadn r5, #'X'		; Se o Barril passa sobre o Mario, apaga com um X, senao apaga com o cenario 
+		jmp MoveBarril_Apaga_Fim
+		
+  MoveBarril_Apaga_Skip1:	
+	; --> R2 = Tela1Linha0 + posAnt + posAnt/40  ; tem que somar posAnt/40 no ponteiro pois as linas da string terminam com /0 !!
+	loadn R1, #tela3Linha00	; Endereco onde comeca a primeira linha do cenario!!
+	add R2, R1, r0	; R2 = Tela1Linha0 + posAnt
+	loadn R4, #40
+	div R3, R0, R4	; R3 = posAnt/40
+	add R2, R2, R3	; R2 = Tela1Linha0 + posAnt + posAnt/40
+	
+	loadi R5, R2	; R5 = Char (Tela(posAnt))
+
+  MoveBarril_Apaga_Fim:	
+	outchar R5, R0	; Apaga o Obj na tela com o Char correspondente na memoria do cenario
+	
+	pop R5
+	pop R4
+	pop R3
+	pop R2
+	pop R1
+	pop R0
+	rts
+;----------------------------------	
+
+MoveBarril_RecalculaPos:
+	push R0
+	push R1
+	push R2
+	
+	load R1, FlagBarril	; Se movimentacao do Barril esta ativa!
+	loadn R2, #1
+	cmp R1, R2			; If FlagBarril == 1  Movimenta o Barril
+	jne MoveBarril_RecalculaPos_Fim2	; Se nao vai embora!
+	
+	load R0, posBarril	; Testa se o Barril Pegou no Alien (Mario)
+	load R1, posMario
+	cmp R0, R1			; IF posBarril == posAlien  BOOM!!
+	jeq MoveBarril_RecalculaPos_Boom
+	
+	loadn R1, #1160		; Testa condicoes de Contorno 
+	;loadn R2, #39
+	;mod R1, R0, R1		
+	cmp R0, R1			; Se Barril chegou na ultima linha
+	jle MoveBarril_RecalculaPos_Fim
+	call MoveBarril_Apaga
+	loadn R0, #0
+	load R1, posDK
+	store FlagBarril, R0	; Zera FlagBarril
+	;store posBarril, R1	; Zera e iguala posBarril e posAntBarril
+	;store posAntBarril, R1
+	jmp MoveBarril_RecalculaPos_Fim2	
+	
+  MoveBarril_RecalculaPos_Fim:
+	loadn R1, #40
+	add R0, R0, R1
+	;inc R0
+	store posBarril, R0
+  MoveBarril_RecalculaPos_Fim2:	
+	pop R2
+	pop R1
+	pop R0
+	rts
+
+  MoveBarril_RecalculaPos_Boom:	
+	; Limpa a Tela !!
+  	loadn R1, #tela0Linha00	; Endereco onde comeca a primeira linha do cenario!!
+	loadn R2, #0  			; cor branca!
+	call ImprimeTela   		;  Rotina de Impresao de Cenario na Tela Inteira
+  
+	;imprime Voce Venceu !!!
+	loadn r0, #526
+	loadn r1, #Msn0
+	loadn r2, #0
+	call ImprimeStr2
+	
+	;imprime quer jogar novamente
+	loadn r0, #605
+	loadn r1, #Msn1
+	loadn r2, #0
+	call ImprimeStr2
+	
+	;call DigLetra
+	;loadn r0, #'s'
+	;load r1, Letra
+	;cmp r0, r1				; tecla == 's' ?
+	;jne MoveBarril_RecalculaPos_FimJogo	; tecla nao e' 's'
+	
+	; Se quiser jogar novamente...
+	call ApagaTela
+	
+	pop r2
+	pop r1
+	pop r0
+
+	pop r0	; Da um Pop a mais para acertar o ponteiro da pilha, pois nao vai dar o RTS !!
+	jmp main
+
+  MoveBarril_RecalculaPos_FimJogo:
+	call ApagaTela
+	halt
+
+;----------------------------------
+
+MoveBarril_Desenha:
+	push R0
+	push R1
+	
+	Loadn R1, #258	; Barril
+	load R0, posBarril
+	outchar R1, R0
+	store posAntBarril, R0
+	
+	pop R1
+	pop R0
+	rts
+
+	
+	
+ApagaTela:
+	push r0
+	push r1
+	
+	loadn r0, #1200		; apaga as 1200 posicoes da Tela
+	loadn r1, #' '		; com "espaco"
+	
+	   ApagaTela_Loop:	;;label for(r0=1200;r3>0;r3--)
+		dec r0
+		outchar r1, r0
+		jnz ApagaTela_Loop
+ 
+	pop r1
+	pop r0
+	rts	
+
 ;Delay para a animacao de queda do mario quando passa da plataforma	
 Delay:	
-	loadn R1, #500
+	push R1
+	push R2
+	
+	loadn R1, #5
 	loopj:
-		loadn R2, #500
+		loadn R2, #3000
 	loopi:
 		dec R2
 		jnz loopi
 		dec R1
 		jnz loopj
+		
+	pop R2
+	pop R1
 	rts
 	
 ImprimeTela: 	;  Rotina de Impresao de Cenario na Tela Inteira
@@ -531,8 +891,8 @@ tela2Linha29 : string "                                        "
 
 ;------Plataforma1---------
 tela3Linha00 : string "                                        "
-tela3Linha01 : string "                 @@                     "
-tela3Linha02 : string "                 @@  %%%                "
+tela3Linha01 : string "                                        "
+tela3Linha02 : string "                                        "
 tela3Linha03 : string "    #### ################### ########   "
 tela3Linha04 : string "                                        "
 tela3Linha05 : string "                                        "
